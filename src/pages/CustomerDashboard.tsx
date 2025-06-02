@@ -9,7 +9,7 @@ import DashboardLayout from "../components/DashboardLayout";
 
 const CustomerDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   const [availableWorkers] = useState([
     { id: 1, name: "John Smith", service: "Plumbing", rating: 4.8, price: "$50/hr", availability: "Available" },
@@ -25,7 +25,7 @@ const CustomerDashboard = () => {
   const filteredWorkers = availableWorkers.filter(worker => {
     const matchesSearch = worker.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          worker.service.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || worker.service === selectedCategory;
+    const matchesCategory = selectedCategory === "all" || worker.service === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -79,7 +79,7 @@ const CustomerDashboard = () => {
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="Plumbing">Plumbing</SelectItem>
                   <SelectItem value="Electrical">Electrical</SelectItem>
                   <SelectItem value="Cleaning">Cleaning</SelectItem>
