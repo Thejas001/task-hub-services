@@ -1,13 +1,15 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin } from "lucide-react";
+import { MapPin, Star, Eye } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 
 const CustomerDashboard = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLocation, setSelectedLocation] = useState("all");
@@ -109,11 +111,15 @@ const CustomerDashboard = () => {
           <CardContent>
             <div className="space-y-4">
               {filteredWorkers.map(worker => (
-                <div key={worker.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
+                <div key={worker.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow">
+                  <div className="flex-1">
                     <h4 className="font-semibold">{worker.name}</h4>
-                    <p className="text-sm text-gray-600">{worker.service} • ⭐ {worker.rating} • {worker.price}</p>
-                    <div className="flex items-center text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      {worker.service} • 
+                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                      {worker.rating} • {worker.price}
+                    </p>
+                    <div className="flex items-center text-sm text-muted-foreground mt-1">
                       <MapPin className="w-3 h-3 mr-1" />
                       {worker.location}
                     </div>
@@ -122,7 +128,20 @@ const CustomerDashboard = () => {
                     <Badge variant={worker.availability === 'Available' ? 'default' : 'secondary'}>
                       {worker.availability}
                     </Badge>
-                    <Button size="sm" disabled={worker.availability === 'Busy'}>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => navigate(`/worker-profile/${worker.id}`)}
+                      className="gap-1"
+                    >
+                      <Eye className="w-3 h-3" />
+                      View Profile
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      disabled={worker.availability === 'Busy'}
+                      onClick={() => navigate(`/worker-profile/${worker.id}`)}
+                    >
                       Book Now
                     </Button>
                   </div>
