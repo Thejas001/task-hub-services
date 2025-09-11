@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management</title>
+    <script>
+        const API_BASE = "http://localhost:5000"; // Change this based on your backend
+
+        // User Registration
+        async function registerUser() {
+            const email = document.getElementById("reg-email").value;
+            const password = document.getElementById("reg-password").value;
+
+            const res = await fetch(`${API_BASE}/users/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await res.json();
+            alert(data.message || "User Registered");
+        }
+
+        // User Login
+        async function loginUser() {
+            const email = document.getElementById("login-email").value;
+            const password = document.getElementById("login-password").value;
+
+            const res = await fetch(`${API_BASE}/users/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                sessionStorage.setItem("token", data.token);
+                alert("Login Successful!");
+            } else {
+                alert(data.message);
+            }
+        }
+
+        // Add Employee
+        async function addEmployee() {
+            const name = document.getElementById("emp-name").value;
+            const role = document.getElementById("emp-role").value;
+
+            const res = await fetch(`${API_BASE}/employees/add`, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${sessionStorage.getItem("token")}`
+                },
+                body: JSON.stringify({ name, role })
+            });
+
+            const data = await res.json();
+            alert(data.message || "Employee Added");
+        }
+
+        // Mark Attendance
+        async function markAttendance(type) {
+            const res = await fetch(`${API_BASE}/attendance`, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${sessionStorage.getItem("token")}`
+                },
+                body: JSON.stringify({ type }) // "Check-in" or "Check-out"
+            });
+
+            const data = await res.json();
+            alert(data.message || "Attendance Marked");
+        }
+
+        // Apply Leave
+        async function applyLeave() {
+            const reason = document.getElementById("leave-reason").value;
+
+            const res = await fetch(`${API_BASE}/leave/apply`, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${sessionStorage.getItem("token")}`
+                },
+                body: JSON.stringify({ reason })
+            });
+
+            const data = await res.json();
+            alert(data.message || "Leave Applied");
+        }
+    </script>
+</head>
+<body>
+
+    <h2>User API Test</h2>
+
+    <h3>Register User</h3>
+    <input type="text" id="regName" placeholder="Name">
+    <input type="email" id="regEmail" placeholder="Email">
+    <input type="password" id="regPassword" placeholder="Password">
+    <input type="text" id="regRole" placeholder="Role (Admin/User)">
+    <button onclick="registerUser()">Register</button>
+
+    <h3>Login</h3>
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="loginUser()">Login</button>
+
+    <h3>Get Profile</h3>
+    <button onclick="getProfile()">Get My Profile</button>
+
+    <h3>Get All Users (Admin only)</h3>
+    <button onclick="getAllUsers()">Get All Users</button>
+
+    <h3>Get User by ID (Admin only)</h3>
+    <input type="text" id="userId" placeholder="User ID">
+    <button onclick="getUserById()">Get User</button>
+
+    <h3>Update User (Admin only)</h3>
+    <input type="text" id="updateUserId" placeholder="User ID">
+    <input type="text" id="updateName" placeholder="New Name">
+    <input type="email" id="updateEmail" placeholder="New Email">
+    <input type="text" id="updateRole" placeholder="New Role">
+    <button onclick="updateUser()">Update User</button>
+
+    <h3>Delete User (Admin only)</h3>
+    <input type="text" id="deleteUserId" placeholder="User ID">
+    <button onclick="deleteUser()">Delete User</button>
+
+    <h2>📜 API Response:</h2>
+    <div id="responseContainer" style="border: 1px solid black; padding: 10px; min-height: 50px;"></div>
+    <h2>Test Employee API</h2>
+    
+    <label for="authToken">Enter Auth Token:</label>
+    <input type="text" id="authToken" placeholder="Paste your token here"><br><br>
+    
+    <h3>Add Employee</h3>
+    <form id="addEmployeeForm">
+        <input type="text" id="userId" placeholder="User ID" required><br>
+        <input type="text" id="position" placeholder="Position" required><br>
+        <input type="text" id="department" placeholder="Department" required><br>
+        <input type="number" id="salary" placeholder="Salary" required><br>
+        <input type="date" id="joiningDate" required><br>
+        <button type="submit">Add Employee</button>
+    </form>
+    
+    <h3>Get All Employees</h3>
+    <button onclick="getEmployees()">Fetch Employees</button>
+    <pre id="employeesList"></pre>
+    
+    <script>
+        let token = ""; // Store the token after login
+
+        function displayResponse(data) {
+            document.getElementById("responseContainer").innerHTML = 
+                `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+
+        async function registerUser() {
+            try {
+                const response = await fetch('http://localhost:5000/api/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById("regName").value,
+                        email: document.getElementById("regEmail").value,
+                        password: document.getElementById("regPassword").value,
+                        role: document.getElementById("regRole").value
+                    })
+                });
+
+                const data = await response.json();
+                displayResponse(data);
+            } catch (error) {
+                displayResponse({ error: error.message });
+            }
+        }
+
+        async function loginUser() {
+            try {
+                const response = await fetch('http://localhost:5000/api/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById("loginEmail").value,
+                        password: document.getElementById("loginPassword").value
+                    })
+                });
+
+                const data = await response.json();
+                if (data.token) {
+                    token = data.token;
+                    displayResponse({ message: "Login successful!", token });
+                } else {
+                    displayResponse(data);
+                }
+            } catch (error) {
+                displayResponse({ error: error.message });
+            }
+        }
+
+        async function getProfile() {
+            try {
+                const response = await fetch('http://localhost:5000/api/users/profile', {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+                displayResponse(data);
+            } catch (error) {
+                displayResponse({ error: error.message });
+            }
+        }
+
+        async function getAllUsers() {
+            try {
+                const response = await fetch('http://localhost:5000/api/users/all', {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+                displayResponse(data);
+            } catch (error) {
+                displayResponse({ error: error.message });
+            }
+        }
+
+        async function getUserById() {
+            try {
+                const userId = document.getElementById("userId").value;
+                const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+                displayResponse(data);
+            } catch (error) {
+                displayResponse({ error: error.message });
+            }
+        }
+
+        async function updateUser() {
+            try {
+                const userId = document.getElementById("updateUserId").value;
+                const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById("updateName").value,
+                        email: document.getElementById("updateEmail").value,
+                        role: document.getElementById("updateRole").value
+                    })
+                });
+
+                const data = await response.json();
+                displayResponse(data);
+            } catch (error) {
+                displayResponse({ error: error.message });
+            }
+        }
+
+        async function deleteUser() {
+            try {
+                const userId = document.getElementById("deleteUserId").value;
+                const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+                displayResponse(data);
+            } catch (error) {
+                displayResponse({ error: error.message });
+            }
+        }
+     
+        const apiUrl = 'http://localhost:5000/api/employees'; // Change to your actual backend URL
+        
+        document.getElementById('addEmployeeForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            
+            const authToken = document.getElementById('authToken').value;
+            if (!authToken) {
+                alert("Please enter an Auth Token");
+                return;
+            }
+            
+            const data = {
+                userId: document.getElementById('userId').value,
+                position: document.getElementById('position').value,
+                department: document.getElementById('department').value,
+                salary: document.getElementById('salary').value,
+                joiningDate: document.getElementById('joiningDate').value
+            };
+            
+            const response = await fetch(`${apiUrl}/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            alert(JSON.stringify(result));
+        });
+        
+        async function getEmployees() {
+            const authToken = document.getElementById('authToken').value;
+            if (!authToken) {
+                alert("Please enter an Auth Token");
+                return;
+            }
+            
+            const response = await fetch(`${apiUrl}/all`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            const employees = await response.json();
+            document.getElementById('employeesList').innerText = JSON.stringify(employees, null, 2);
+        }
+    </script>
+
+</body>
+
+    <h2>User Registration</h2>
+    <input type="email" id="reg-email" placeholder="Email">
+    <input type="password" id="reg-password" placeholder="Password">
+    <button onclick="registerUser()">Register</button>
+
+    <h2>User Login</h2>
+    <input type="email" id="login-email" placeholder="Email">
+    <input type="password" id="login-password" placeholder="Password">
+    <button onclick="loginUser()">Login</button>
+
+    <h2>Add Employee</h2>
+    <input type="text" id="emp-name" placeholder="Employee Name">
+    <input type="text" id="emp-role" placeholder="Role (Admin/HR/Employee)">
+    <button onclick="addEmployee()">Add Employee</button>
+
+    <h2>Mark Attendance</h2>
+    <button onclick="markAttendance('Check-in')">Check-in</button>
+    <button onclick="markAttendance('Check-out')">Check-out</button>
+
+    <h2>Apply for Leave</h2>
+    <input type="text" id="leave-reason" placeholder="Reason for Leave">
+    <button onclick="applyLeave()">Apply Leave</button>
+</body> -->
+</html>

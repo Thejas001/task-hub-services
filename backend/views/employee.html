@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Employee API</title>
+</head>
+<body>
+    <h2>Test Employee API</h2>
+    
+    <label for="authToken">Enter Auth Token:</label>
+    <input type="text" id="authToken" placeholder="Paste your token here"><br><br>
+    
+    <h3>Add Employee</h3>
+    <form id="addEmployeeForm">
+        <input type="text" id="userId" placeholder="User ID" required><br>
+        <input type="text" id="position" placeholder="Position" required><br>
+        <input type="text" id="department" placeholder="Department" required><br>
+        <input type="number" id="salary" placeholder="Salary" required><br>
+        <input type="date" id="joiningDate" required><br>
+        <button type="submit">Add Employee</button>
+    </form>
+    
+    <h3>Get All Employees</h3>
+    <button onclick="getEmployees()">Fetch Employees</button>
+    <pre id="employeesList"></pre>
+    
+    <script>
+        const apiUrl = 'http://localhost:5000/api/employees'; // Change to your actual backend URL
+        
+        document.getElementById('addEmployeeForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            
+            const authToken = document.getElementById('authToken').value;
+            if (!authToken) {
+                alert("Please enter an Auth Token");
+                return;
+            }
+            
+            const data = {
+                userId: document.getElementById('userId').value,
+                position: document.getElementById('position').value,
+                department: document.getElementById('department').value,
+                salary: document.getElementById('salary').value,
+                joiningDate: document.getElementById('joiningDate').value
+            };
+            
+            const response = await fetch(`${apiUrl}/add`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            alert(JSON.stringify(result));
+        });
+        
+        async function getEmployees() {
+            const authToken = document.getElementById('authToken').value;
+            if (!authToken) {
+                alert("Please enter an Auth Token");
+                return;
+            }
+            
+            const response = await fetch(`${apiUrl}/all`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            const employees = await response.json();
+            document.getElementById('employeesList').innerText = JSON.stringify(employees, null, 2);
+        }
+    </script>
+</body>
+</html>

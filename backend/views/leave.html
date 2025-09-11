@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Management</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        form { margin-bottom: 20px; }
+        label { display: block; margin-top: 10px; }
+        input, select, button { width: 100%; padding: 8px; margin-top: 5px; }
+        .container { max-width: 500px; margin: auto; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Enter Token</h2>
+        <input type="text" id="tokenInput" placeholder="Paste your token here">
+        <button onclick="saveToken()">Save Token</button>
+
+        <h2>Apply for Leave</h2>
+        <form id="leaveForm">
+            <label>Start Date:</label>
+            <input type="date" id="startDate" required>
+
+            <label>End Date:</label>
+            <input type="date" id="endDate" required>
+
+            <label>Reason:</label>
+            <input type="text" id="reason" required>
+
+            <button type="submit">Apply</button>
+        </form>
+
+        <h2>Your Leave History</h2>
+        <button onclick="getUserLeaves()">View Leave History</button>
+        <ul id="leaveHistory"></ul>
+
+        <div id="adminPanel" class="hidden">
+            <h2>Admin Panel: Leave Requests</h2>
+            <button onclick="getAllLeaves()">Fetch Leave Requests</button>
+            <ul id="leaveRequests"></ul>
+        </div>
+    </div>
+
+    <script src="leave.js"></script>
+</body>
+</html>
