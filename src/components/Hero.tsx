@@ -1,11 +1,18 @@
 
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface HeroProps {
-  onGetStartedClick: () => void;
+  onGetStartedClick?: () => void;
 }
 
 const Hero = ({ onGetStartedClick }: HeroProps) => {
+  const navigate = useNavigate();
+  
+  const handleGetStarted = () => {
+    navigate('/customer-dashboard');
+  };
+
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto text-center">
@@ -18,8 +25,8 @@ const Hero = ({ onGetStartedClick }: HeroProps) => {
           Quality service at your doorstep.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" className="bg-blue-600 hover:bg-blue-700" onClick={onGetStartedClick}>
-            Get Started
+          <Button size="lg" className="bg-blue-600 hover:bg-blue-700" onClick={handleGetStarted}>
+            Browse Workers
           </Button>
           <Button size="lg" variant="outline">
             Learn More
