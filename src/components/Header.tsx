@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 const Header = ({ onLoginClick, onRegisterClick }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <header className="bg-white shadow-lg sticky top-0 z-50">
@@ -20,6 +22,12 @@ const Header = ({ onLoginClick, onRegisterClick }: HeaderProps) => {
           </div>
           
           <nav className="hidden md:flex space-x-8">
+            <button 
+              onClick={() => navigate('/customer-dashboard')}
+              className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+            >
+              Browse Workers
+            </button>
             <a href="#services" className="text-gray-700 hover:text-blue-600 transition-colors">Services</a>
             <a href="#how-it-works" className="text-gray-700 hover:text-blue-600 transition-colors">How It Works</a>
             <a href="#about" className="text-gray-700 hover:text-blue-600 transition-colors">About</a>
@@ -49,6 +57,12 @@ const Header = ({ onLoginClick, onRegisterClick }: HeaderProps) => {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t">
             <nav className="flex flex-col space-y-4">
+              <button 
+                onClick={() => navigate('/customer-dashboard')}
+                className="text-gray-700 hover:text-blue-600 transition-colors font-medium text-left"
+              >
+                Browse Workers
+              </button>
               <a href="#services" className="text-gray-700 hover:text-blue-600 transition-colors">Services</a>
               <a href="#how-it-works" className="text-gray-700 hover:text-blue-600 transition-colors">How It Works</a>
               <a href="#about" className="text-gray-700 hover:text-blue-600 transition-colors">About</a>
