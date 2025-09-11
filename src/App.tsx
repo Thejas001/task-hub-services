@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import AdminDashboard from "./pages/AdminDashboard";
 import WorkerDashboard from "./pages/WorkerDashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
+import FindWorkers from "./pages/FindWorkers";
 import WorkerRegistration from "./pages/WorkerRegistration";
 import WorkerProfile from "./pages/WorkerProfile";
 import NotFound from "./pages/NotFound";
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/worker-dashboard" element={<WorkerDashboard />} />
           <Route path="/customer-dashboard" element={<CustomerDashboard />} />
+          <Route path="/find-workers" element={<FindWorkers />} />
           <Route path="/worker-registration" element={<WorkerRegistration />} />
           <Route path="/worker-profile/:workerId" element={<WorkerProfile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

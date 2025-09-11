@@ -23,7 +23,7 @@ const Header = ({ onLoginClick, onRegisterClick }: HeaderProps) => {
           
           <nav className="hidden md:flex space-x-8">
             <button 
-              onClick={() => navigate('/customer-dashboard')}
+              onClick={() => navigate('/find-workers')}
               className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
             >
               Browse Workers
@@ -58,7 +58,7 @@ const Header = ({ onLoginClick, onRegisterClick }: HeaderProps) => {
           <div className="md:hidden py-4 border-t">
             <nav className="flex flex-col space-y-4">
               <button 
-                onClick={() => navigate('/customer-dashboard')}
+                onClick={() => navigate('/find-workers')}
                 className="text-gray-700 hover:text-blue-600 transition-colors font-medium text-left"
               >
                 Browse Workers

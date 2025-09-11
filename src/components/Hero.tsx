@@ -10,7 +10,7 @@ const Hero = ({ onGetStartedClick }: HeroProps) => {
   const navigate = useNavigate();
   
   const handleGetStarted = () => {
-    navigate('/customer-dashboard');
+    navigate('/find-workers');
   };
 
   return (

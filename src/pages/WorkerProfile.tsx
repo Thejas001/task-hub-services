@@ -324,6 +324,15 @@ const WorkerProfile = () => {
                             )
                           }
                           className={cn("w-full border rounded-md p-3 pointer-events-auto")}
+                          modifiers={{
+                            available: availableDates,
+                          }}
+                          modifiersStyles={{
+                            available: {
+                              backgroundColor: 'hsl(var(--primary) / 0.1)',
+                              border: '1px solid hsl(var(--primary) / 0.3)',
+                            }
+                          }}
                         />
                       </div>
                       

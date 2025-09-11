@@ -3,38 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Star, Eye } from "lucide-react";
+import { Search, Calendar, Plus } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 
 const CustomerDashboard = () => {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedLocation, setSelectedLocation] = useState("all");
-
-  const [availableWorkers] = useState([
-    { id: 1, name: "John Smith", service: "Plumbing", rating: 4.8, price: "$50/hr", availability: "Available", location: "Downtown" },
-    { id: 2, name: "Mary Johnson", service: "Cleaning", rating: 4.9, price: "$30/hr", availability: "Available", location: "Suburbs" },
-    { id: 3, name: "Bob Wilson", service: "Electrical", rating: 4.7, price: "$60/hr", availability: "Busy", location: "Downtown" },
-    { id: 4, name: "Sarah Davis", service: "Gardening", rating: 4.6, price: "$35/hr", availability: "Available", location: "North End" },
-    { id: 5, name: "Mike Brown", service: "Plumbing", rating: 4.5, price: "$55/hr", availability: "Available", location: "Suburbs" },
-    { id: 6, name: "Lisa Garcia", service: "Electrical", rating: 4.8, price: "$65/hr", availability: "Available", location: "North End" },
-  ]);
 
   const [myBookings] = useState([
-    { id: 1, worker: "John Smith", service: "Plumbing", date: "2024-01-15", status: "completed" },
-    { id: 2, worker: "Mary Johnson", service: "Cleaning", date: "2024-01-20", status: "in-progress" },
+    { id: 1, worker: "John Smith", service: "Plumbing", date: "2024-01-15", status: "completed", time: "10:00 AM", location: "Downtown" },
+    { id: 2, worker: "Mary Johnson", service: "Cleaning", date: "2024-01-20", status: "in-progress", time: "2:00 PM", location: "Suburbs" },
+    { id: 3, worker: "Bob Wilson", service: "Electrical", date: "2024-01-25", status: "upcoming", time: "11:00 AM", location: "Downtown" },
   ]);
-
-  const filteredWorkers = availableWorkers.filter(worker => {
-    const matchesSearch = worker.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         worker.service.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || worker.service === selectedCategory;
-    const matchesLocation = selectedLocation === "all" || worker.location === selectedLocation;
-    return matchesSearch && matchesCategory && matchesLocation;
-  });
 
   return (
     <DashboardLayout title="Customer Dashboard" userRole="customer">
@@ -70,118 +49,103 @@ const CustomerDashboard = () => {
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Find Workers</CardTitle>
-            <div className="space-y-4 pt-4">
-              <Input
-                placeholder="Search workers by name or service..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
-              <div className="flex space-x-4">
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Service Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Services</SelectItem>
-                    <SelectItem value="Plumbing">Plumbing</SelectItem>
-                    <SelectItem value="Electrical">Electrical</SelectItem>
-                    <SelectItem value="Cleaning">Cleaning</SelectItem>
-                    <SelectItem value="Gardening">Gardening</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
-                    <SelectItem value="Downtown">Downtown</SelectItem>
-                    <SelectItem value="Suburbs">Suburbs</SelectItem>
-                    <SelectItem value="North End">North End</SelectItem>
-                  </SelectContent>
-                </Select>
+      {/* Quick Actions */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Button 
+              className="h-16 text-left justify-start gap-3"
+              onClick={() => navigate('/find-workers')}
+            >
+              <Search className="h-6 w-6" />
+              <div>
+                <div className="font-semibold">Find Workers</div>
+                <div className="text-sm opacity-90">Browse available service providers</div>
               </div>
-            </div>
+            </Button>
+            <Button 
+              variant="outline"
+              className="h-16 text-left justify-start gap-3"
+              onClick={() => navigate('/find-workers')}
+            >
+              <Plus className="h-6 w-6" />
+              <div>
+                <div className="font-semibold">Book Service</div>
+                <div className="text-sm opacity-90">Schedule a new appointment</div>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              My Bookings
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {filteredWorkers.map(worker => (
-                <div key={worker.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow">
-                  <div className="flex-1">
-                    <h4 className="font-semibold">{worker.name}</h4>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      {worker.service} • 
-                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      {worker.rating} • {worker.price}
-                    </p>
-                    <div className="flex items-center text-sm text-muted-foreground mt-1">
-                      <MapPin className="w-3 h-3 mr-1" />
-                      {worker.location}
+              {myBookings.map(booking => (
+                <div key={booking.id} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-lg">{booking.worker}</h4>
+                      <p className="text-primary font-medium">{booking.service}</p>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        <div className="flex items-center gap-4">
+                          <span>📅 {booking.date}</span>
+                          <span>🕐 {booking.time}</span>
+                          <span>📍 {booking.location}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={worker.availability === 'Available' ? 'default' : 'secondary'}>
-                      {worker.availability}
-                    </Badge>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => navigate(`/worker-profile/${worker.id}`)}
-                      className="gap-1"
-                    >
-                      <Eye className="w-3 h-3" />
-                      View Profile
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      disabled={worker.availability === 'Busy'}
-                      onClick={() => navigate(`/worker-profile/${worker.id}`)}
-                    >
-                      Book Now
-                    </Button>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge 
+                        variant={
+                          booking.status === 'completed' ? 'default' : 
+                          booking.status === 'in-progress' ? 'secondary' : 
+                          'outline'
+                        }
+                      >
+                        {booking.status}
+                      </Badge>
+                      <div className="flex gap-2">
+                        {booking.status === 'completed' && (
+                          <Button size="sm" variant="outline">Rate & Review</Button>
+                        )}
+                        {booking.status === 'upcoming' && (
+                          <Button size="sm" variant="outline">Reschedule</Button>
+                        )}
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => navigate(`/worker-profile/${booking.id}`)}
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
-              {filteredWorkers.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  No workers found matching your criteria. Try adjusting your filters.
+              {myBookings.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-lg mb-2">No bookings yet</p>
+                  <p className="mb-4">Start by finding and booking a service provider.</p>
+                  <Button onClick={() => navigate('/find-workers')}>
+                    Browse Workers
+                  </Button>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>My Bookings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {myBookings.map(booking => (
-                <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h4 className="font-semibold">{booking.worker}</h4>
-                    <p className="text-sm text-gray-600">{booking.service} • {booking.date}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={booking.status === 'completed' ? 'default' : 'secondary'}>
-                      {booking.status}
-                    </Badge>
-                    {booking.status === 'completed' && (
-                      <Button size="sm" variant="outline">Rate</Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </DashboardLayout>
   );
 };
