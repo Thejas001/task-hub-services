@@ -51,6 +51,11 @@ const DashboardLayout = ({ children, title, userRole }: DashboardLayoutProps) =>
                   <div className="text-sm text-gray-500 capitalize">{userRole}</div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                {userRole === 'customer' && (
+                  <DropdownMenuItem onClick={() => navigate('/customer-dashboard')}>
+                    Profile
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem>
                   Profile Settings
                 </DropdownMenuItem>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Employee Management System</h1>
+
+        <!-- Authentication Section -->
+        <div id="auth-section">
+            <h2>User Authentication</h2>
+            <div class="form-container">
+                <h3>Register</h3>
+                <input type="text" id="regName" placeholder="Name">
+                <input type="email" id="regEmail" placeholder="Email">
+                <input type="password" id="regPassword" placeholder="Password">
+                <input type="text" id="regRole" placeholder="Role (Admin/User)">
+                <button onclick="registerUser()">Register</button>
+            </div>
+
+            <div class="form-container">
+                <h3>Login</h3>
+                <input type="email" id="loginEmail" placeholder="Email">
+                <input type="password" id="loginPassword" placeholder="Password">
+                <button id="loginButton">Login</button>
+            </div>
+        </div>
+
+        <!-- Employee Management -->
+        <div id="employee-section" class="hidden">
+            <h2>Employee Details</h2>
+            <div id="employeeDetails"></div>
+            <button onclick="enableEdit()">Edit</button>
+            <button id="updateButton" class="hidden">Update</button>
+        </div>
+
+        <h2>📜 API Response:</h2>
+        <div id="responseContainer"></div>
+    </div>
+
+    <!-- ✅ Load JavaScript after HTML -->
+    <script src="script.js"></script>
+</body>
+</html>

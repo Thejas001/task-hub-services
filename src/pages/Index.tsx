@@ -13,20 +13,36 @@ const Index = () => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const navigate = useNavigate();
 
-  const handleAuthSuccess = (role: string) => {
+  const handleAuthSuccess = (role: string, needsProfileCompletion?: boolean) => {
     setIsAuthModalOpen(false);
     // Store user session in localStorage
     localStorage.setItem('userRole', role);
     
-    // Navigate to appropriate dashboard
-    switch(role) {
+    // Check if there's a redirect URL stored
+    const redirectUrl = localStorage.getItem('redirectAfterLogin');
+    if (redirectUrl) {
+      localStorage.removeItem('redirectAfterLogin');
+      navigate(redirectUrl);
+      return;
+    }
+    
+    // Navigate to appropriate dashboard based on backend role values
+    switch(role.toLowerCase()) {
       case 'admin':
         navigate('/admin-dashboard');
         break;
-      case 'worker':
-        navigate('/worker-dashboard');
+      case 'employee':
+        if (needsProfileCompletion) {
+          navigate('/worker-complete-profile');
+        } else {
+          navigate('/worker-application-status');
+        }
         break;
-      case 'customer':
+      case 'user':
+        navigate('/customer-dashboard');
+        break;
+      default:
+        // Fallback for any other roles
         navigate('/customer-dashboard');
         break;
     }
