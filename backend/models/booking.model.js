@@ -48,12 +48,12 @@ const Booking = sequelize.define('Booking', {
         allowNull: false
     },
     estimatedHours: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.DECIMAL(4, 2),
         allowNull: false,
-        defaultValue: 1,
+        defaultValue: 1.0,
         validate: {
-            min: 1,
-            max: 12
+            min: 0.5,
+            max: 12.0
         }
     },
     specialRequirements: {

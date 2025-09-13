@@ -1,17 +1,166 @@
 const { User} = require('../models');
 const Employee = require('../models/employee.model');
+const Payment = require('../models/payment.model');
 const jwt = require('jsonwebtoken');
 const sequelize = require('../config/db');
+const notificationService = require('../services/notificationService');
 
 
+// Complete worker profile with payment (called after basic registration)
+exports.completeWorkerProfile = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    console.log('Complete profile request body:', req.body);
+    console.log('Complete profile request files:', req.files);
+    console.log('User from token:', req.user);
+    
+    const {
+      firstName, middleName, lastName,
+      age, address, state, pinCode, city,
+      mobileNumber, nationality, workExperience,
+      workType, hourlyRate, bio, skills, 
+      certifications, isAvailable, availableDays, 
+      availableTimeSlots, paymentMethod, transactionId
+    } = req.body;
+
+    const userId = req.user.id; // From JWT token
+
+    // Check if user already has an employee profile
+    const existingEmployee = await Employee.findOne({ where: { userId } });
+    if (existingEmployee) {
+      console.log('User already has employee profile:', existingEmployee.id);
+      return res.status(400).json({ 
+        message: 'Profile already completed',
+        employeeId: existingEmployee.id,
+        applicationStatus: existingEmployee.applicationStatus
+      });
+    }
+
+    // Update user details
+    await User.update({
+      name: `${firstName} ${middleName || ''} ${lastName}`.trim(),
+      phone: mobileNumber
+    }, { where: { id: userId }, transaction: t });
+
+    // Parse JSON fields if they're strings
+    let parsedSkills = skills;
+    let parsedCertifications = certifications;
+    let parsedAvailableDays = availableDays;
+    let parsedAvailableTimeSlots = availableTimeSlots;
+
+    if (typeof skills === 'string') {
+      try { parsedSkills = JSON.parse(skills); } catch (e) { parsedSkills = []; }
+    }
+    if (typeof certifications === 'string') {
+      try { parsedCertifications = JSON.parse(certifications); } catch (e) { parsedCertifications = []; }
+    }
+    if (typeof availableDays === 'string') {
+      try { parsedAvailableDays = JSON.parse(availableDays); } catch (e) { parsedAvailableDays = []; }
+    }
+    if (typeof availableTimeSlots === 'string') {
+      try { parsedAvailableTimeSlots = JSON.parse(availableTimeSlots); } catch (e) { parsedAvailableTimeSlots = []; }
+    }
+
+    // Get user email from the database
+    const user = await User.findByPk(userId, { transaction: t });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Create employee profile
+    const employee = await Employee.create({
+      userId,
+      firstName,
+      middleName,
+      lastName,
+      email: user.email, // Use email from user table
+      age,
+      address,
+      state,
+      pinCode,
+      city,
+      mobileNumber,
+      nationality,
+      workExperience,
+      workType,
+      hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+      bio,
+      skills: parsedSkills,
+      certifications: parsedCertifications,
+      isAvailable: isAvailable !== undefined ? isAvailable === 'true' : true,
+      availableDays: parsedAvailableDays,
+      availableTimeSlots: parsedAvailableTimeSlots,
+      applicationStatus: 'pending',
+      rating: 0.00,
+      totalReviews: 0,
+      isVerified: false,
+      isBackgroundChecked: false,
+      // Store file paths if files were uploaded
+      profilePic: req.files?.profilePic ? req.files.profilePic[0].path : null,
+      certificate: req.files?.certificate ? req.files.certificate[0].path : null,
+      aadharCard: req.files?.aadharCard ? req.files.aadharCard[0].path : null,
+      panCard: req.files?.panCard ? req.files.panCard[0].path : null,
+      idCard: req.files?.idCard ? req.files.idCard[0].path : null
+    }, { transaction: t });
+
+    // Create payment record (non-fatal if payments table missing)
+    const registrationFee = 500; // ₹500 registration fee
+    let payment = null;
+    try {
+      payment = await Payment.create({
+        userId,
+        employeeId: employee.id,
+        paymentType: 'registration_fee',
+        amount: registrationFee,
+        paymentMethod: paymentMethod || 'razorpay',
+        paymentStatus: transactionId ? 'completed' : 'pending',
+        transactionId,
+        description: 'Worker registration fee',
+        paidAt: transactionId ? new Date() : null
+      }, { transaction: t });
+    } catch (paymentError) {
+      console.warn('Payment record creation failed, proceeding without blocking profile completion:', paymentError.message);
+    }
+
+    await t.commit();
+
+    // Send notification to admins
+    notificationService.notifyWorkerApplicationSubmitted(
+      employee.id, 
+      `${firstName} ${lastName}`
+    );
+
+    res.status(201).json({
+      message: 'Profile completed successfully. Awaiting admin verification.',
+      employeeId: employee.id,
+      applicationStatus: employee.applicationStatus,
+      paymentId: payment ? payment.id : null,
+      registrationFee: registrationFee
+    });
+
+  } catch (error) {
+    await t.rollback();
+    console.error('Complete profile error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Error completing profile', 
+      error: error.message,
+      details: error.stack
+    });
+  }
+};
+
+// Legacy endpoint - kept for backward compatibility
 exports.addEmployee = async (req, res) => {
   const t = await sequelize.transaction(); // For atomicity
   try {
     const {
       firstName, middleName, lastName,
-      age, address, state, pinCode,
+      age, address, state, pinCode, city,
       mobileNumber, nationality, workExperience,
-      workType, email, password
+      workType, email, password, hourlyRate,
+      bio, skills, certifications, isAvailable,
+      availableDays, availableTimeSlots
     } = req.body;
     console.log("Received body:", req.body);
     console.log("Uploaded files:", req.files);
@@ -22,8 +171,27 @@ exports.addEmployee = async (req, res) => {
       email,
       password,
       phone: mobileNumber,
-      role: 'Employee'
+      role: 'employee'
     }, { transaction: t });
+
+    // Parse JSON fields if they're strings
+    let parsedSkills = skills;
+    let parsedCertifications = certifications;
+    let parsedAvailableDays = availableDays;
+    let parsedAvailableTimeSlots = availableTimeSlots;
+
+    if (typeof skills === 'string') {
+      try { parsedSkills = JSON.parse(skills); } catch (e) { parsedSkills = []; }
+    }
+    if (typeof certifications === 'string') {
+      try { parsedCertifications = JSON.parse(certifications); } catch (e) { parsedCertifications = []; }
+    }
+    if (typeof availableDays === 'string') {
+      try { parsedAvailableDays = JSON.parse(availableDays); } catch (e) { parsedAvailableDays = []; }
+    }
+    if (typeof availableTimeSlots === 'string') {
+      try { parsedAvailableTimeSlots = JSON.parse(availableTimeSlots); } catch (e) { parsedAvailableTimeSlots = []; }
+    }
 
     // ✅ Create Employee WITH userId directly and file paths
     const employee = await Employee.create({
@@ -31,19 +199,34 @@ exports.addEmployee = async (req, res) => {
       firstName,
       middleName,
       lastName,
+      email,
       age,
       address,
       state,
       pinCode,
+      city,
       mobileNumber,
       nationality,
       workExperience,
-      workType, // Add workType to employee creation
+      workType,
+      hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+      bio,
+      skills: parsedSkills,
+      certifications: parsedCertifications,
+      isAvailable: isAvailable !== undefined ? isAvailable === 'true' : true,
+      availableDays: parsedAvailableDays,
+      availableTimeSlots: parsedAvailableTimeSlots,
       applicationStatus: 'pending',
+      rating: 0.00,
+      totalReviews: 0,
+      isVerified: false,
+      isBackgroundChecked: false,
       // Store file paths if files were uploaded
+      profilePic: req.files?.profilePic ? req.files.profilePic[0].path : null,
       certificate: req.files?.certificate ? req.files.certificate[0].path : null,
       aadharCard: req.files?.aadharCard ? req.files.aadharCard[0].path : null,
-      panCard: req.files?.panCard ? req.files.panCard[0].path : null
+      panCard: req.files?.panCard ? req.files.panCard[0].path : null,
+      idCard: req.files?.idCard ? req.files.idCard[0].path : null
     }, { transaction: t });
 
     // ✅ Commit transaction
@@ -107,7 +290,11 @@ exports.loginEmployee = async (req, res) => {
       }
   
       // Get associated employee to check application status
-      const employee = await Employee.findOne({ where: { userId: user.id } });
+      // Limit attributes to avoid selecting columns that may not exist yet in the DB schema
+      const employee = await Employee.findOne({ 
+        where: { userId: user.id },
+        attributes: ['id', 'userId', 'applicationStatus']
+      });
       if (!employee) {
         return res.status(404).json({ message: 'Employee profile not found' });
       }
@@ -309,9 +496,21 @@ exports.getEmployeeStatus = async (req, res) => {
         const userId = req.user.id; // from JWT token
         const employee = await Employee.findOne({ where: { userId } });
         if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
+            return res.status(404).json({ 
+                message: 'No application found',
+                hasApplication: false,
+                applicationStatus: 'not_found'
+            });
         }
-        res.json({ applicationStatus: employee.applicationStatus });
+        res.json({ 
+            applicationStatus: employee.applicationStatus,
+            hasApplication: true,
+            employeeId: employee.id,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            workType: employee.workType,
+            createdAt: employee.createdAt
+        });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching application status', error });
     }
@@ -323,7 +522,7 @@ exports.getAllPendingWorkerApplications = async (req, res) => {
     console.log("User from token:", req.user);
 
     // Allow only Admin
-    if (!req.user || req.user.role !== "Admin") {
+    if (!req.user || (req.user.role || '').toLowerCase() !== "admin") {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -419,6 +618,13 @@ exports.getPublicWorkers = async (req, res) => {
         "nationality",
         "workExperience",
         "workType",
+        "hourlyRate",
+        "bio",
+        "isAvailable",
+        "rating",
+        "totalReviews",
+        "isVerified",
+        "isBackgroundChecked",
         "applicationStatus", 
         "profilePic",
         "createdAt",
@@ -450,6 +656,13 @@ exports.getPublicWorkers = async (req, res) => {
       nationality: employee.nationality,
       workExperience: employee.workExperience,
       workType: employee.workType,
+      hourlyRate: employee.hourlyRate,
+      bio: employee.bio,
+      isAvailable: employee.isAvailable,
+      rating: employee.rating || 0,
+      totalReviews: employee.totalReviews || 0,
+      isVerified: employee.isVerified,
+      isBackgroundChecked: employee.isBackgroundChecked,
       applicationStatus: employee.applicationStatus,
       profilePic: employee.profilePic,
       createdAt: employee.createdAt,
@@ -463,5 +676,290 @@ exports.getPublicWorkers = async (req, res) => {
       message: "Error fetching public worker data",
       error: error.message
     });
+  }
+};
+
+// Search workers with filters (public endpoint)
+exports.searchWorkers = async (req, res) => {
+  try {
+    const { workType, state, city, minRating, isAvailable, minHourlyRate, maxHourlyRate } = req.query;
+    
+    const whereClause = { applicationStatus: 'accepted' };
+    
+    if (workType) whereClause.workType = workType;
+    if (state) whereClause.state = state;
+    if (city) whereClause.city = city;
+    if (isAvailable !== undefined) whereClause.isAvailable = isAvailable === 'true';
+    if (minRating) whereClause.rating = { [sequelize.Op.gte]: parseFloat(minRating) };
+    if (minHourlyRate) whereClause.hourlyRate = { [sequelize.Op.gte]: parseFloat(minHourlyRate) };
+    if (maxHourlyRate) {
+      whereClause.hourlyRate = { 
+        ...whereClause.hourlyRate,
+        [sequelize.Op.lte]: parseFloat(maxHourlyRate) 
+      };
+    }
+
+    const workers = await Employee.findAll({
+      where: whereClause,
+      attributes: [
+        'id', 'firstName', 'lastName', 'email', 'mobileNumber', 'age',
+        'address', 'state', 'city', 'pinCode', 'nationality', 'workType',
+        'workExperience', 'hourlyRate', 'bio', 'skills', 'certifications',
+        'isAvailable', 'rating', 'totalReviews', 'isVerified', 'isBackgroundChecked',
+        'profilePic', 'createdAt'
+      ],
+      order: [['rating', 'DESC'], ['totalReviews', 'DESC']]
+    });
+
+    res.json(workers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Error searching workers",
+      error: error.message
+    });
+  }
+};
+
+// Get worker profile by ID (public endpoint)
+exports.getWorkerProfile = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    
+    const worker = await Employee.findOne({
+      where: { 
+        id: workerId, 
+        applicationStatus: 'accepted' 
+      },
+      attributes: [
+        'id', 'firstName', 'lastName', 'email', 'mobileNumber', 'age',
+        'address', 'state', 'city', 'pinCode', 'nationality', 'workType',
+        'workExperience', 'hourlyRate', 'bio', 'skills', 'certifications',
+        'isAvailable', 'rating', 'totalReviews', 'isVerified', 'isBackgroundChecked',
+        'profilePic', 'createdAt'
+      ]
+    });
+
+    if (!worker) {
+      return res.status(404).json({ message: 'Worker not found' });
+    }
+
+    res.json(worker);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Error fetching worker profile",
+      error: error.message
+    });
+  }
+};
+
+// Update worker availability (authenticated)
+exports.updateAvailability = async (req, res) => {
+  try {
+    const employee = await Employee.findOne({ where: { userId: req.user.id } });
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    const { availableDays, availableTimeSlots, isAvailable } = req.body;
+
+    // Parse JSON fields if they're strings
+    let parsedAvailableDays = availableDays;
+    let parsedAvailableTimeSlots = availableTimeSlots;
+
+    if (typeof availableDays === 'string') {
+      try { parsedAvailableDays = JSON.parse(availableDays); } catch (e) { parsedAvailableDays = []; }
+    }
+    if (typeof availableTimeSlots === 'string') {
+      try { parsedAvailableTimeSlots = JSON.parse(availableTimeSlots); } catch (e) { parsedAvailableTimeSlots = []; }
+    }
+
+    await employee.update({
+      availableDays: parsedAvailableDays,
+      availableTimeSlots: parsedAvailableTimeSlots,
+      isAvailable: isAvailable !== undefined ? isAvailable : employee.isAvailable
+    });
+
+    res.json({ message: 'Availability updated successfully', employee });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Error updating availability",
+      error: error.message
+    });
+  }
+};
+
+// Get worker reviews (public endpoint)
+exports.getWorkerReviews = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    
+    // Check if worker exists and is accepted
+    const worker = await Employee.findOne({
+      where: { id: workerId, applicationStatus: 'accepted' },
+      attributes: ['id']
+    });
+
+    if (!worker) {
+      return res.status(404).json({ message: 'Worker not found' });
+    }
+
+    // For now, return empty array since we haven't implemented the reviews table yet
+    // TODO: Implement when worker_reviews table is connected
+    res.json([]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Error fetching worker reviews",
+      error: error.message
+    });
+  }
+};
+
+// Get all pending worker applications (Admin only)
+exports.getAllPendingWorkerApplications = async (req, res) => {
+  try {
+    if ((req.user.role || '').toLowerCase() !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const applications = await Employee.findAll({
+      where: { applicationStatus: 'pending' },
+      attributes: [
+        'id', 'userId', 'firstName', 'middleName', 'lastName', 'email', 'mobileNumber', 'age',
+        'address', 'state', 'city', 'pinCode', 'nationality', 'workType', 'workExperience',
+        'hourlyRate', 'bio', 'skills', 'certifications', 'isAvailable', 'availableDays',
+        'availableTimeSlots', 'profilePic', 'certificate', 'aadharCard', 'panCard', 'idCard',
+        'applicationStatus', 'rating', 'totalReviews', 'isVerified', 'isBackgroundChecked',
+        'createdAt'
+      ],
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Format applications with payment info
+    const formattedApplications = applications.map(app => ({
+      id: app.id,
+      userId: app.userId,
+      firstName: app.firstName,
+      middleName: app.middleName,
+      lastName: app.lastName,
+      email: app.email,
+      mobileNumber: app.mobileNumber,
+      age: app.age,
+      address: app.address,
+      state: app.state,
+      city: app.city,
+      pinCode: app.pinCode,
+      nationality: app.nationality,
+      workType: app.workType,
+      workExperience: app.workExperience,
+      hourlyRate: app.hourlyRate,
+      applicationStatus: app.applicationStatus,
+      createdAt: app.createdAt,
+      profilePic: app.profilePic,
+      certificate: app.certificate,
+      aadharCard: app.aadharCard,
+      panCard: app.panCard,
+      idCard: app.idCard,
+      bio: app.bio,
+      skills: app.skills || [],
+      certifications: app.certifications || [],
+      isAvailable: app.isAvailable,
+      availableDays: app.availableDays || [],
+      availableTimeSlots: app.availableTimeSlots || [],
+      rating: app.rating,
+      totalReviews: app.totalReviews,
+      isVerified: app.isVerified,
+      isBackgroundChecked: app.isBackgroundChecked,
+      user: app.user ? { id: app.user.id, name: app.user.name, email: app.user.email } : undefined,
+      paymentStatus: 'completed',
+      paymentAmount: 500
+    }));
+
+    res.json(formattedApplications);
+  } catch (error) {
+    console.error('Error fetching pending applications:', error);
+    res.status(500).json({ message: 'Error fetching applications', error: error.message });
+  }
+};
+
+// Approve worker application (Admin only)
+exports.approveWorkerApplication = async (req, res) => {
+  try {
+    if ((req.user.role || '').toLowerCase() !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { id } = req.params;
+    
+    const employee = await Employee.findByPk(id);
+    if (!employee) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    await employee.update({
+      applicationStatus: 'accepted',
+      isVerified: true,
+      isBackgroundChecked: true
+    });
+
+    // Send notification to worker
+    notificationService.notifyApplicationApproved(
+      employee.userId,
+      `${employee.firstName} ${employee.lastName}`
+    );
+
+    res.json({ 
+      message: 'Application approved successfully',
+      applicationStatus: 'accepted'
+    });
+  } catch (error) {
+    console.error('Error approving application:', error);
+    res.status(500).json({ message: 'Error approving application', error: error.message });
+  }
+};
+
+// Reject worker application (Admin only)
+exports.rejectWorkerApplication = async (req, res) => {
+  try {
+    if ((req.user.role || '').toLowerCase() !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    const employee = await Employee.findByPk(id);
+    if (!employee) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    await employee.update({
+      applicationStatus: 'rejected'
+    });
+
+    // Send notification to worker
+    notificationService.notifyApplicationRejected(
+      employee.userId,
+      `${employee.firstName} ${employee.lastName}`,
+      reason || 'No reason provided'
+    );
+
+    res.json({ 
+      message: 'Application rejected successfully',
+      applicationStatus: 'rejected'
+    });
+  } catch (error) {
+    console.error('Error rejecting application:', error);
+    res.status(500).json({ message: 'Error rejecting application', error: error.message });
   }
 };

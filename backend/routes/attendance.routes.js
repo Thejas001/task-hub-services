@@ -20,12 +20,12 @@ const authRole = require('../middleware/authRole');
 const { checkIn, checkOut, approveAttendance, getAllAttendance, deleteAttendance, getAttendanceByUserId } = require('../controllers/attendance.controller');
 
 // ✅ Employee Routes
-router.post('/check-in', authMiddleware, authRole(['Admin', 'HR', 'Employee']), checkIn);
-router.post('/check-out', authMiddleware, authRole(['Admin', 'HR', 'Employee']), checkOut);
-router.get("/:userId", authMiddleware, authRole(['Admin', 'HR', 'Employee']), getAttendanceByUserId);
+router.post('/check-in', authMiddleware, authRole(['admin', 'hr', 'employee']), checkIn);
+router.post('/check-out', authMiddleware, authRole(['admin', 'hr', 'employee']), checkOut);
+router.get("/:userId", authMiddleware, authRole(['admin', 'hr', 'employee']), getAttendanceByUserId);
 // ✅ Admin Routes
-router.put('/approve', authMiddleware, authRole(['Admin', 'Hr']), approveAttendance);
-router.get('/', authMiddleware, authRole(['Admin', 'Hr']), getAllAttendance);
-router.delete('/:id', authMiddleware, authRole(['Admin']), deleteAttendance);
+router.put('/approve', authMiddleware, authRole(['admin', 'hr']), approveAttendance);
+router.get('/', authMiddleware, authRole(['admin', 'hr']), getAllAttendance);
+router.delete('/:id', authMiddleware, authRole(['admin']), deleteAttendance);
 
 module.exports = router;

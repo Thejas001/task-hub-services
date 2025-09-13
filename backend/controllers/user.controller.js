@@ -3,13 +3,13 @@ const { User, Employee } = require("../models");
 const Booking = require("../models/booking.model");
 require("dotenv").config();
 
-// Register a new user (with employee details and document upload)
+// Register a new customer user
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { email, password, phone } = req.body;
 
-    if (!name || !email || !password || !phone) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
     const existingUser = await User.findOne({ where: { email } });
@@ -18,11 +18,11 @@ exports.registerUser = async (req, res) => {
     }
 
     const newUser = await User.create({
-      name,
+      name: "Customer", // Default name
       email,
       password,
-      phone,
-      role: "User", // Customer role
+      phone: phone || "",
+      role: "user", // Customer role
     });
 
     const token = jwt.sign(
@@ -45,6 +45,67 @@ exports.registerUser = async (req, res) => {
     console.error("User Registration Error:", error);
     res.status(500).json({
       message: "Error registering user",
+      error: error.message,
+    });
+  }
+};
+
+// Register a new worker (basic registration - email/password only)
+exports.registerWorker = async (req, res) => {
+  try {
+    console.log('🔵 Worker registration request received:', { email: req.body.email, hasPassword: !!req.body.password });
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      console.log('❌ Missing email or password');
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      console.log('❌ User already exists:', email);
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    console.log('🟢 Creating new worker user...');
+    const newUser = await User.create({
+      name: "Worker", // Temporary name, will be updated in details form
+      email,
+      password,
+      phone: "", // Will be updated in details form
+      role: "employee", // Worker role
+    });
+    console.log('✅ User created successfully:', { id: newUser.id, email: newUser.email, role: newUser.role });
+
+    console.log('🔑 Generating JWT token...');
+    const token = jwt.sign(
+      { id: newUser.id, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" } // Longer expiry for registration process
+    );
+    console.log('✅ JWT token generated successfully');
+
+    const response = {
+      message: "Worker account created. Please complete your profile.",
+      token,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        role: newUser.role,
+        needsProfileCompletion: true
+      },
+    };
+    console.log('📤 Sending response:', { message: response.message, hasToken: !!response.token, userId: response.user.id });
+    res.status(201).json(response);
+  } catch (error) {
+    console.error("💥 Worker Registration Error:", error);
+    console.error("💥 Error details:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    res.status(500).json({
+      message: "Error registering worker",
       error: error.message,
     });
   }
@@ -113,24 +174,39 @@ exports.getProfile = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // Fetch user's bookings
+    console.log('🔍 Looking for bookings with customer email:', user.email);
     const bookings = await Booking.findAll({
       where: { customerEmail: user.email },
       include: [{
         model: Employee,
         as: 'employee',
-        attributes: ['firstName', 'lastName']
+        attributes: ['firstName', 'lastName', 'hourlyRate', 'workType', 'mobileNumber']
       }],
       order: [['createdAt', 'DESC']]
     });
+    console.log('📋 Found bookings:', bookings.length);
+    
+    // Debug: Check all bookings in database
+    const allBookings = await Booking.findAll({ limit: 5 });
+    console.log('🔍 All bookings in database:', allBookings.map(b => ({ id: b.id, customerEmail: b.customerEmail, status: b.status })));
+    
+    // Debug: Check all users in database
+    const allUsers = await User.findAll({ limit: 5, attributes: ['id', 'email', 'role'] });
+    console.log('👥 All users in database:', allUsers.map(u => ({ id: u.id, email: u.email, role: u.role })));
 
     // Format bookings for frontend
     const formattedBookings = bookings.map(booking => ({
       id: booking.id,
       workerName: booking.employee ? `${booking.employee.firstName} ${booking.employee.lastName}` : 'Unknown Worker',
       serviceType: booking.workDescription || 'General Work',
+      workType: booking.employee?.workType || 'General',
       bookingDate: booking.preferredDate,
+      preferredTime: booking.preferredTime,
+      address: booking.address,
+      estimatedHours: booking.estimatedHours,
       status: booking.status,
-      amount: booking.estimatedHours * 500 // Assuming ₹500 per hour
+      workerPhone: booking.employee?.mobileNumber || '',
+      amount: booking.estimatedHours * (booking.employee?.hourlyRate || 500) // Use actual hourly rate or default to ₹500
     }));
 
     // Format the response to match frontend expectations

@@ -16,21 +16,45 @@ const createBooking = async (req, res) => {
       preferredDate,
       preferredTime,
       address,
+      estimatedHours,
       budget,
       urgency,
       status = 'pending'
     } = req.body;
 
+    // Debug: Log the received data
+    console.log('📋 Booking creation request received:', req.body);
+    console.log('📋 Data types:', {
+      workerId: typeof workerId,
+      estimatedHours: typeof estimatedHours,
+      preferredDate: typeof preferredDate,
+      preferredTime: typeof preferredTime
+    });
+    
     // Validate required fields
-    if (!workerId || !customerName || !customerEmail || !workDescription || !preferredDate) {
+    const missingFields = [];
+    if (!workerId) missingFields.push('workerId');
+    if (!customerName) missingFields.push('customerName');
+    if (!customerEmail) missingFields.push('customerEmail');
+    if (!workDescription) missingFields.push('workDescription');
+    if (!preferredDate) missingFields.push('preferredDate');
+    
+    if (missingFields.length > 0) {
+      console.log('❌ Missing required fields:', missingFields);
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields'
+        message: `Missing required fields: ${missingFields.join(', ')}`
       });
     }
 
     // Check if worker exists
+    console.log('🔍 Looking for worker with ID:', workerId);
     const worker = await Employee.findByPk(workerId);
+    console.log('👷 Worker found:', worker ? 'Yes' : 'No');
+    if (worker) {
+      console.log('👷 Worker details:', { id: worker.id, name: `${worker.firstName} ${worker.lastName}`, status: worker.applicationStatus });
+    }
+    
     if (!worker) {
       return res.status(404).json({
         success: false,
@@ -38,45 +62,69 @@ const createBooking = async (req, res) => {
       });
     }
 
-    // Check if the date is already booked for this worker
+    // Check if the date and time is already booked for this worker
     const existingBooking = await Booking.findOne({
       where: {
         employeeId: workerId,
         preferredDate,
+        preferredTime,
         status: ['pending', 'accepted']
       }
     });
 
     if (existingBooking) {
+      console.log('❌ Duplicate booking found:', { employeeId: workerId, preferredDate, preferredTime });
       return res.status(400).json({
         success: false,
-        message: 'This date is already booked for the worker'
+        message: 'This time slot is already booked for the selected worker'
       });
     }
 
     // Create new booking
-    const booking = await Booking.create({
-      employeeId: workerId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      workDescription: workDescription || workType || '',
-      preferredDate,
-      preferredTime,
-      address,
-      estimatedHours: 1, // Default value
-      specialRequirements: `${budget ? 'Budget: ' + budget : ''}${urgency ? ' Urgency: ' + urgency : ''}`.trim(),
-      status,
-      bookingDate: new Date().toISOString().split('T')[0]
-    });
-
-
-
-    res.status(201).json({
-      success: true,
-      message: 'Work request submitted successfully',
-      data: booking
-    });
+    try {
+      const bookingData = {
+        employeeId: workerId,
+        customerName,
+        customerEmail,
+        customerPhone,
+        workDescription: workDescription || workType || '',
+        preferredDate,
+        preferredTime,
+        address,
+        estimatedHours: estimatedHours || 1, // Use provided value or default to 1
+        specialRequirements: `${budget ? 'Budget: ' + budget : ''}${urgency ? ' Urgency: ' + urgency : ''}`.trim(),
+        status,
+        bookingDate: new Date().toISOString().split('T')[0]
+      };
+      
+      console.log('📝 Creating booking with data:', bookingData);
+      const booking = await Booking.create(bookingData);
+      
+      console.log('✅ Booking created successfully:', booking.id);
+      
+      res.status(201).json({
+        success: true,
+        message: 'Work request submitted successfully',
+        data: booking
+      });
+      
+    } catch (dbError) {
+      console.error('💥 Database error creating booking:', dbError);
+      
+      // Handle unique constraint violation
+      if (dbError.name === 'SequelizeUniqueConstraintError') {
+        return res.status(400).json({
+          success: false,
+          message: 'This time slot is already booked for the selected worker'
+        });
+      }
+      
+      // Handle other database errors
+      return res.status(500).json({
+        success: false,
+        message: 'Database error occurred while creating booking'
+      });
+    }
 
   } catch (error) {
     console.error('Error creating booking:', error);

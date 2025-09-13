@@ -1,12 +1,21 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
 const sequelize = require('./config/db');
-require('./models'); // Sync models
+const models = require('./models'); // Load models
+const notificationService = require('./services/notificationService');
 
 const app = express();
+const server = http.createServer(app);
 
-app.use(cors());
+// Configure CORS to allow frontend origin
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'], // Include all common dev ports
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Serve static files from uploads directory
@@ -19,6 +28,8 @@ app.use('/api/workrequests', require('./routes/workrequest.routes'));
 app.use('/api/jobposts', require('./routes/jobpost.routes'));
 app.use('/api/bookings', require('./routes/booking.routes'));
 app.use('/api/admin', require('./routes/admin.routes'));
+app.use('/api/payments', require('./routes/payment.routes'));
+app.use('/api/categories', require('./routes/serviceCategory.routes'));
 
 // After all your routes
 app.use((req, res, next) => {
@@ -79,13 +90,27 @@ async function createDefaultAdmin() {
 }
     
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, async () => {
+
+// Initialize notification service
+notificationService.initialize(server);
+
+server.listen(PORT, async () => {
     try {
         await sequelize.authenticate();
         console.log('🚀 Server running on port', PORT);
+        console.log('🔔 WebSocket notifications available at ws://localhost:' + PORT + '/ws/notifications');
         
-        await sequelize.sync({ alter: true }); // Ensure tables, including Booking, are synced
-        console.log('✅ All models synced');
+        // Ensure service categories table exists without altering other tables
+        if (models && models.ServiceCategory) {
+            await models.ServiceCategory.sync();
+            console.log('✅ ServiceCategory table ensured');
+        }
+        
+        // Ensure booking table exists
+        if (models && models.Booking) {
+            await models.Booking.sync();
+            console.log('✅ Booking table ensured');
+        }
         
         // Create default admin user after database sync
         await createDefaultAdmin();

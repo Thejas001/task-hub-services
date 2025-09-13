@@ -14,6 +14,7 @@
 const express = require('express');
 const {
     registerUser,
+    registerWorker,
     login,
     getProfile,
     updateUserProfile,
@@ -36,5 +37,6 @@ router.get('/:id', authMiddleware, getUserById);
 router.put('/:id', authMiddleware, updateUser);
 router.delete('/:id', authMiddleware, deleteUser);
 router.post('/register', registerUser);
+router.post('/register-worker', registerWorker);
 
 module.exports = router;

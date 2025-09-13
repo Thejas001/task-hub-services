@@ -9,6 +9,11 @@ const JobPost = sequelize.define("JobPost", {
         allowNull: false,
         references: { model: User, key: "id" }
     },
+    employeeId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: { model: "employees", key: "id" }
+    },
     category: { type: DataTypes.STRING, allowNull: false },
     description: { type: DataTypes.TEXT, allowNull: false },
     ratePerHour: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
@@ -18,6 +23,9 @@ const JobPost = sequelize.define("JobPost", {
         type: DataTypes.ENUM("active", "inactive"),
         defaultValue: "active"
     }
-}, { timestamps: true });
+}, { 
+    timestamps: true,
+    tableName: 'jobposts'
+});
 
 module.exports = JobPost;
